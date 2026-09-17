@@ -1,8 +1,10 @@
 const bcrypt = require('bcryptjs');
 
-// Hash por defecto para contraseñas de demostración (ejemplo: "123456" y "jefa123" para la Jefa)
-const DEFAULT_HASH = bcrypt.hashSync('123456', 10);
-const JEFA_HASH = bcrypt.hashSync('jefa123', 10);
+// Hashes para contraseñas seguras de producción
+const JEFA_HASH = bcrypt.hashSync('ElenaRuiz2026!', 10);
+const CARLOS_HASH = bcrypt.hashSync('CarlosPsico2026!', 10);
+const MARTA_HASH = bcrypt.hashSync('MartaPsico2026!', 10);
+const JAVIER_HASH = bcrypt.hashSync('JavierPsico2026!', 10);
 
 /**
  * Lista de usuarios (Sicólogos y Jefa) con sus roles y credenciales.
@@ -26,7 +28,7 @@ const USERS = [
         title: 'Sicólogo Cognitivo-Conductual',
         email: 'carlos.garcia@centro-psicologia.com',
         username: 'carlos',
-        passwordHash: DEFAULT_HASH,
+        passwordHash: CARLOS_HASH,
         role: 'SICOLOGO',
         avatar: 'CG',
         badge: 'Sicólogo',
@@ -38,7 +40,7 @@ const USERS = [
         title: 'Sicóloga Infanto-Juvenil',
         email: 'marta.martinez@centro-psicologia.com',
         username: 'marta',
-        passwordHash: DEFAULT_HASH,
+        passwordHash: MARTA_HASH,
         role: 'SICOLOGO',
         avatar: 'MM',
         badge: 'Sicóloga',
@@ -50,7 +52,7 @@ const USERS = [
         title: 'Sicólogo Terapeuta de Pareja',
         email: 'javier.lopez@centro-psicologia.com',
         username: 'javier',
-        passwordHash: DEFAULT_HASH,
+        passwordHash: JAVIER_HASH,
         role: 'SICOLOGO',
         avatar: 'JL',
         badge: 'Sicólogo',
@@ -59,7 +61,6 @@ const USERS = [
 ];
 
 function getUsers() {
-    // Retorna usuarios sin exponer sus passwordHashes
     return USERS.map(({ passwordHash, ...user }) => user);
 }
 
@@ -71,6 +72,7 @@ function getUserById(id) {
 }
 
 function getUserByLogin(usernameOrEmail) {
+    if (!usernameOrEmail) return null;
     const term = usernameOrEmail.trim().toLowerCase();
     return USERS.find(u => u.email.toLowerCase() === term || u.username.toLowerCase() === term);
 }

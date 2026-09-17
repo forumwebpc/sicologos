@@ -14,6 +14,16 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
     let currentScheduleData = null;
 
+    // --- Helper de Cabeceras con Bearer Token ---
+    function getAuthHeaders(extraHeaders = {}) {
+        const token = localStorage.getItem('auth_token');
+        const headers = { ...extraHeaders };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        return headers;
+    }
+
     // --- DOM Elements ---
     const userHeaderCard = document.getElementById('user-header-card');
     const currentUserAvatar = document.getElementById('current-user-avatar');
@@ -71,7 +81,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 1. Autenticación y Estado de Sesión ---
     async function checkAuthStatus() {
         try {
-            const response = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' });
+            const response = await fetch(`${API_BASE}/auth/me`, {
+                headers: getAuthHeaders(),
+                credentials: 'include'
+            });
             if (response.ok) {
                 const data = await response.json();
                 updateUserUI(data.user);
@@ -123,7 +136,6 @@ document.addEventListener('DOMContentLoaded', () => {
         btnOpenLogin.classList.add('hidden');
         btnLogout.classList.remove('hidden');
 
-        // Actualizar el banner de privacidad según el rol
         if (user.role === 'JEFA') {
             privacyBanner.className = 'privacy-notice jefa-banner';
             privacyTitle.textContent = `Vista Directora (${user.name}):`;
@@ -150,7 +162,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 2. Room Management ---
     async function loadRooms() {
         try {
-            const response = await fetch(`${API_BASE}/rooms`, { credentials: 'include' });
+            const response = await fetch(`${API_BASE}/rooms`, {
+                headers: getAuthHeaders(),
+                credentials: 'include'
+            });
             if (response.ok) {
                 roomsList = await response.json();
                 populateRoomSelectOptions();
@@ -227,10 +242,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const response = await fetch(`${API_BASE}/schedule?date=${currentDate}`, {
+                headers: getAuthHeaders(),
                 credentials: 'include'
             });
 
             if (response.status === 401) {
+                localStorage.removeItem('auth_token');
                 updateUserUI(null);
                 renderLoggedOutState();
                 modalLogin.classList.remove('hidden');
@@ -243,7 +260,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             currentScheduleData = await response.json();
 
-            // Actualizar indicador de modo (Google API vs Simulación)
             if (currentScheduleData.isMockMode) {
                 modeBadge.className = 'mode-badge';
                 modeBadge.innerHTML = '<i class="fa-solid fa-circle-dot"></i> Modo Simulación';
@@ -287,7 +303,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const roomSlot = roomsData[room.id];
 
                 if (!roomSlot || roomSlot.status === 'FREE') {
-                    // --- SALA LIBRE ---
                     html += `
                         <td>
                             <div class="slot-card free" onclick="window.appOpenBookingModal('${room.id}', ${slot.hour})">
@@ -299,7 +314,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         </td>
                     `;
                 } else if (roomSlot.isMine) {
-                    // --- MI SESIÓN (PROPIO SICÓLOGO O JEFA) ---
                     html += `
                         <td>
                             <div class="slot-card mine" onclick="window.appOpenDetailModal('${roomSlot.eventId}', '${room.id}')">
@@ -313,7 +327,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         </td>
                     `;
                 } else if (roomSlot.viewMode === 'FULL_BOSS_VIEW') {
-                    // --- VISTA JEFA (VER DETALLES DE OTROS SICÓLOGOS) ---
                     html += `
                         <td>
                             <div class="slot-card occupied boss-view" onclick="window.appOpenDetailModal('${roomSlot.eventId}', '${room.id}')">
@@ -327,7 +340,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         </td>
                     `;
                 } else {
-                    // --- VISTA PRIVADA SICÓLOGO (MÁSCARA "OCUPADO") ---
                     html += `
                         <td>
                             <div class="slot-card occupied">
@@ -368,7 +380,6 @@ document.addEventListener('DOMContentLoaded', () => {
         bookingPsychologistDisplay.value = `${currentUser.name} (${currentUser.title})`;
         bookingRoomSelect.value = roomId;
 
-        // Cargar opciones de horas en el modal
         bookingHourSelect.innerHTML = '';
         for (let h = 9; h < 20; h++) {
             const label = `${String(h).padStart(2, '0')}:00 - ${String(h + 1).padStart(2, '0')}:00`;
@@ -385,7 +396,6 @@ document.addEventListener('DOMContentLoaded', () => {
     window.appOpenDetailModal = function(eventId, roomId) {
         if (!currentScheduleData) return;
 
-        // Buscar el evento en el grid actual
         let foundSlot = null;
         let foundRoomData = null;
 
@@ -419,7 +429,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('detail-patient').textContent = foundRoomData.patientName;
         document.getElementById('detail-notes').textContent = foundRoomData.notes || 'Sin notas ingresadas.';
 
-        // Permitir borrar si es su propia sesión o es la Jefa
         if (foundRoomData.canCancel) {
             btnDeleteBooking.classList.remove('hidden');
         } else {
@@ -431,29 +440,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Global Event Listeners
     function setupEventListeners() {
-        // Abrir modal de Login
         btnOpenLogin.addEventListener('click', () => {
             loginErrorMsg.classList.add('hidden');
             modalLogin.classList.remove('hidden');
         });
 
-        // Cerrar sesión
         btnLogout.addEventListener('click', async () => {
             if (!confirm('¿Seguro que deseas cerrar la sesión?')) return;
             try {
                 await fetch(`${API_BASE}/auth/logout`, {
                     method: 'POST',
+                    headers: getAuthHeaders(),
                     credentials: 'include'
                 });
+            } catch (err) {
+                console.error('Error al cerrar sesión:', err);
+            } finally {
+                localStorage.removeItem('auth_token');
                 updateUserUI(null);
                 renderLoggedOutState();
                 modalLogin.classList.remove('hidden');
-            } catch (err) {
-                console.error('Error al cerrar sesión:', err);
             }
         });
 
-        // Submit Formulario Login
         formLogin.addEventListener('submit', async (e) => {
             e.preventDefault();
             const username = loginUsernameInput.value.trim();
@@ -479,6 +488,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
+                if (data.token) {
+                    localStorage.setItem('auth_token', data.token);
+                }
+
                 updateUserUI(data.user);
                 modalLogin.classList.add('hidden');
                 loginUsernameInput.value = '';
@@ -491,7 +504,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Cerrar modales
         document.getElementById('btn-close-login-modal').addEventListener('click', () => modalLogin.classList.add('hidden'));
 
         document.getElementById('btn-close-booking-modal').addEventListener('click', () => modalBooking.classList.add('hidden'));
@@ -500,7 +512,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('btn-close-detail-modal').addEventListener('click', () => modalDetail.classList.add('hidden'));
         document.getElementById('btn-close-detail-modal-2').addEventListener('click', () => modalDetail.classList.add('hidden'));
 
-        // Enviar formulario de reserva
         formBooking.addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -514,9 +525,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const response = await fetch(`${API_BASE}/bookings`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     credentials: 'include',
                     body: JSON.stringify({
                         roomId,
@@ -542,7 +551,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Eliminar reserva
         btnDeleteBooking.addEventListener('click', async () => {
             if (!activeDetailBooking) return;
             if (!confirm('¿Estás seguro de que deseas cancelar esta reserva de sala?')) return;
@@ -550,6 +558,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const response = await fetch(`${API_BASE}/bookings/${activeDetailBooking.eventId}?roomId=${activeDetailBooking.roomId}`, {
                     method: 'DELETE',
+                    headers: getAuthHeaders(),
                     credentials: 'include'
                 });
 
@@ -569,7 +578,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Helper HTML Escape
     function escapeHtml(text) {
         if (!text) return '';
         return text
@@ -580,6 +588,5 @@ document.addEventListener('DOMContentLoaded', () => {
             .replace(/'/g, "&#039;");
     }
 
-    // Boot
     init();
 });

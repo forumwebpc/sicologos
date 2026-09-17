@@ -47,12 +47,15 @@ router.post('/login', (req, res) => {
         return res.status(400).json({ error: 'Por favor introduce usuario/email y contraseña.' });
     }
 
-    const userWithHash = getUserByLogin(username);
+    const cleanUsername = String(username).trim();
+    const cleanPassword = String(password).trim();
+
+    const userWithHash = getUserByLogin(cleanUsername);
     if (!userWithHash) {
         return res.status(401).json({ error: 'Usuario o contraseña incorrectos.' });
     }
 
-    const isMatch = bcrypt.compareSync(password, userWithHash.passwordHash);
+    const isMatch = bcrypt.compareSync(cleanPassword, userWithHash.passwordHash);
     if (!isMatch) {
         return res.status(401).json({ error: 'Usuario o contraseña incorrectos.' });
     }
@@ -64,11 +67,13 @@ router.post('/login', (req, res) => {
         { expiresIn: '24h' }
     );
 
-    // Guardar token en cookie HttpOnly
+    // Configurar cookie compatible con HTTPS / SameSite
+    const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
     res.cookie(COOKIE_NAME, token, {
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000, // 24 horas
-        sameSite: 'lax',
+        sameSite: isHttps ? 'none' : 'lax',
+        secure: isHttps,
         path: '/'
     });
 
