@@ -29,6 +29,20 @@ router.get('/rooms', (req, res) => {
 });
 
 /**
+ * Extrae la hora local (0 a 23) en el huso horario de España (Europe/Madrid)
+ */
+function getLocalHourInSpain(isoString) {
+    if (!isoString) return -1;
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return -1;
+    const options = { timeZone: 'Europe/Madrid', hour: '2-digit', hour12: false };
+    const hourStr = new Intl.DateTimeFormat('en-US', options).format(d);
+    let parsed = parseInt(hourStr, 10);
+    if (parsed === 24) parsed = 0;
+    return parsed;
+}
+
+/**
  * GET /api/schedule
  * Query params: date (YYYY-MM-DD)
  * Retorna la rejilla de horas/salas aplicando la máscara de privacidad según el rol del usuario autenticado
@@ -40,37 +54,20 @@ router.get('/schedule', requireAuth, async (req, res, next) => {
             return res.status(400).json({ error: 'El parámetro date es requerido (formato YYYY-MM-DD).' });
         }
 
-        const targetDate = new Date(date);
-        if (isNaN(targetDate.getTime())) {
-            return res.status(400).json({ error: 'Formato de fecha inválido. Use YYYY-MM-DD.' });
-        }
-
-        // Definir inicio y fin de la jornada laboral para el día solicitado
-        const dayStart = new Date(targetDate);
-        dayStart.setHours(WORK_START_HOUR, 0, 0, 0);
-
-        const dayEnd = new Date(targetDate);
-        dayEnd.setHours(WORK_END_HOUR, 0, 0, 0);
+        // Consultar un rango amplio de 24 horas para cubrir cualquier desplazamiento de huso horario
+        const rangeStart = `${date}T00:00:00Z`;
+        const rangeEnd = `${date}T23:59:59Z`;
 
         // 1. Obtener todos los eventos guardados en Google Calendar / Simulación
-        const rawEvents = await calendarService.getEventsForRange(dayStart.toISOString(), dayEnd.toISOString());
+        const rawEvents = await calendarService.getEventsForRange(rangeStart, rangeEnd);
 
         // 2. Generar las franjas horarias de 1 hora (09:00-10:00, 10:00-11:00, etc.)
         const hourlySlots = [];
         for (let hour = WORK_START_HOUR; hour < WORK_END_HOUR; hour++) {
-            const slotStart = new Date(targetDate);
-            slotStart.setHours(hour, 0, 0, 0);
-
-            const slotEnd = new Date(targetDate);
-            slotEnd.setHours(hour + 1, 0, 0, 0);
-
             const timeLabel = `${String(hour).padStart(2, '0')}:00 - ${String(hour + 1).padStart(2, '0')}:00`;
-
             hourlySlots.push({
                 hour,
-                timeLabel,
-                startTimeISO: slotStart.toISOString(),
-                endTimeISO: slotEnd.toISOString()
+                timeLabel
             });
         }
 
@@ -83,14 +80,11 @@ router.get('/schedule', requireAuth, async (req, res, next) => {
             const roomStatuses = {};
 
             rooms.forEach(room => {
-                // Buscar si existe un evento en esta sala durante esta hora
+                // Buscar si existe un evento en esta sala durante esta hora local en España
                 const event = rawEvents.find(evt => {
                     if (evt.roomId !== room.id) return false;
-                    const evtStart = new Date(evt.startTime);
-                    const evtEnd = new Date(evt.endTime);
-                    const sStart = new Date(slot.startTimeISO);
-                    const sEnd = new Date(slot.endTimeISO);
-                    return (sStart < evtEnd && sEnd > evtStart);
+                    const evtHour = getLocalHourInSpain(evt.startTime);
+                    return evtHour === slot.hour;
                 });
 
                 if (!event) {
