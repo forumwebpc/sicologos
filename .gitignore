@@ -1,0 +1,22 @@
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment & Credentials
+.env
+*.pem
+*.json
+!package.json
+!package-lock.json
+
+# Local temp & OS files
+.DS_Store
+Thumbs.db
+~$*.docx
+*.docx
+
+# IDEs
+.vscode/
+.idea/

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Centro de Psicología | Reserva de Salas & Gestión de Sesiones</title>
+    <meta name="description" content="Sistema exclusivo de reserva de salas por horas para equipo de sicólogos y dirección.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome 6 Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Main CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Top Navigation Header -->
+        <header class="app-header">
+            <div class="header-container">
+                <div class="brand-area">
+                    <div class="brand-icon">
+                        <i class="fa-solid fa-brain"></i>
+                    </div>
+                    <div class="brand-text">
+                        <h1>Centro de Psicología <span>Mente & Bienestar</span></h1>
+                        <p>Gestión de Salas y Cuadrante de Sesiones Clínicas</p>
+                    </div>
+                </div>
+
+                <!-- User Profile Card -->
+                <div class="role-switcher-card" id="user-header-card">
+                    <div class="user-avatar" id="current-user-avatar">?</div>
+                    <div class="user-details">
+                        <div class="user-name-row">
+                            <span class="user-name" id="current-user-name">No autenticado</span>
+                            <span class="user-role-badge" id="current-user-badge">Invitado</span>
+                        </div>
+                        <span class="user-email" id="current-user-email">Inicia sesión para continuar</span>
+                    </div>
+                    <div class="user-action-wrapper">
+                        <button id="btn-logout" class="btn-logout hidden" title="Cerrar sesión">
+                            <i class="fa-solid fa-right-from-bracket"></i> Salir
+                        </button>
+                        <button id="btn-open-login" class="btn-login" title="Iniciar sesión">
+                            <i class="fa-solid fa-right-to-bracket"></i> Entrar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <main class="main-workspace">
+            <!-- Controls Bar: Date navigation & Filters -->
+            <section class="controls-bar">
+                <div class="date-navigator">
+                    <button id="btn-prev-day" class="btn-nav" title="Día Anterior">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <div class="date-picker-wrapper">
+                        <i class="fa-regular fa-calendar-days icon-calendar"></i>
+                        <input type="date" id="schedule-date-picker" class="input-date">
+                        <span id="display-formatted-date" class="formatted-date-label">Hoy</span>
+                    </div>
+                    <button id="btn-next-day" class="btn-nav" title="Día Siguiente">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                    <button id="btn-today" class="btn-secondary">Hoy</button>
+                </div>
+
+                <!-- Status & Legend -->
+                <div class="legend-area">
+                    <span class="mode-badge" id="mode-badge">
+                        <i class="fa-solid fa-circle-dot"></i> Modo Simulación
+                    </span>
+                    <div class="legend-items">
+                        <span class="legend-pill free"><span class="dot"></span> Disponible</span>
+                        <span class="legend-pill mine"><span class="dot"></span> Mi Sesión</span>
+                        <span class="legend-pill occupied"><span class="dot"></span> Ocupado (Privado)</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Privacy Notice Banner -->
+            <div class="privacy-notice" id="privacy-banner">
+                <i class="fa-solid fa-shield-halved"></i>
+                <div class="notice-content">
+                    <strong id="privacy-title">Vista Confidencial:</strong>
+                    <span id="privacy-desc">Identifícate con tus credenciales para acceder a la gestión de reservas.</span>
+                </div>
+            </div>
+
+            <!-- Rooms Schedule Matrix -->
+            <section class="matrix-card">
+                <div id="loading-spinner" class="spinner-container hidden">
+                    <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+                    <span>Cargando cuadrante de salas...</span>
+                </div>
+
+                <div class="matrix-table-wrapper" id="matrix-container">
+                    <table class="matrix-table">
+                        <thead>
+                            <tr>
+                                <th class="col-time"><i class="fa-regular fa-clock"></i> Hora</th>
+                                <th class="col-room"><i class="fa-solid fa-couch"></i> Sala 1 <small>Psicoterapia Individual</small></th>
+                                <th class="col-room"><i class="fa-solid fa-child-reaching"></i> Sala 2 <small>Infanto-Juvenil</small></th>
+                                <th class="col-room"><i class="fa-solid fa-people-roof"></i> Sala 3 <small>Pareja y Familia</small></th>
+                                <th class="col-room"><i class="fa-solid fa-clipboard-check"></i> Sala 4 <small>Multiusos / Eval.</small></th>
+                            </tr>
+                        </thead>
+                        <tbody id="matrix-tbody">
+                            <!-- Inyectado dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal: Login / Autenticación -->
+    <div class="modal-overlay hidden" id="modal-login">
+        <div class="modal-card modal-auth-card">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-user-lock"></i> Acceso al Sistema de Reserva</h2>
+                <button class="btn-close-modal" id="btn-close-login-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-login" class="modal-body">
+                <div id="login-error-msg" class="alert alert-danger hidden">
+                    <i class="fa-solid fa-triangle-exclamation"></i> <span id="login-error-text">Credenciales inválidas</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="login-username"><i class="fa-solid fa-user"></i> Usuario o Email:</label>
+                    <input type="text" id="login-username" class="input-text" placeholder="ej: elena o elena.ruiz@centro-psicologia.com" required autocomplete="username">
+                </div>
+
+                <div class="form-group">
+                    <label for="login-password"><i class="fa-solid fa-key"></i> Contraseña:</label>
+                    <input type="password" id="login-password" class="input-text" placeholder="••••••••" required autocomplete="current-password">
+                </div>
+
+                <!-- Credenciales demo de ayuda -->
+                <div class="demo-credentials-box">
+                    <small><i class="fa-solid fa-lightbulb"></i> <strong>Usuarios de prueba:</strong></small>
+                    <ul>
+                        <li><strong>Jefa (Elena):</strong> <code>elena</code> / contraseña: <code>jefa123</code></li>
+                        <li><strong>Sicólogo (Carlos):</strong> <code>carlos</code> / contraseña: <code>123456</code></li>
+                        <li><strong>Sicóloga (Marta):</strong> <code>marta</code> / contraseña: <code>123456</code></li>
+                        <li><strong>Sicólogo (Javier):</strong> <code>javier</code> / contraseña: <code>123456</code></li>
+                    </ul>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="submit" class="btn-primary btn-full-width" id="btn-submit-login">
+                        <i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Nueva Reserva -->
+    <div class="modal-overlay hidden" id="modal-booking">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-calendar-plus"></i> Reservar Sala por 1 Hora</h2>
+                <button class="btn-close-modal" id="btn-close-booking-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-booking" class="modal-body">
+                <div class="form-group">
+                    <label><i class="fa-solid fa-user-doctor"></i> Sicólogo Solicitante:</label>
+                    <input type="text" id="booking-psychologist-display" class="input-disabled" readonly>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="booking-room-select"><i class="fa-solid fa-door-open"></i> Sala:</label>
+                        <select id="booking-room-select" class="input-select" required>
+                            <!-- Inyectado dinámicamente -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="booking-hour-select"><i class="fa-regular fa-clock"></i> Franja Horaria (1h):</label>
+                        <select id="booking-hour-select" class="input-select" required>
+                            <!-- Inyectado dinámicamente -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="booking-patient"><i class="fa-solid fa-user"></i> Nombre del Paciente / Iniciales:</label>
+                    <input type="text" id="booking-patient" class="input-text" placeholder="Ej: María López o M.L." required>
+                </div>
+
+                <div class="form-group">
+                    <label for="booking-notes"><i class="fa-solid fa-note-sticky"></i> Notas / Motivo de Consulta (Opcional):</label>
+                    <textarea id="booking-notes" class="input-textarea" rows="3" placeholder="Información relevante para la sesión..."></textarea>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" id="btn-cancel-booking-modal">Cancelar</button>
+                    <button type="submit" class="btn-primary" id="btn-submit-booking">
+                        <i class="fa-solid fa-check"></i> Confirmar Reserva
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Detalle de Sesión -->
+    <div class="modal-overlay hidden" id="modal-detail">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2 id="detail-title"><i class="fa-solid fa-circle-info"></i> Detalle de la Reserva</h2>
+                <button class="btn-close-modal" id="btn-close-detail-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body detail-body">
+                <div class="detail-badge-row">
+                    <span class="detail-pill" id="detail-room-name">Sala 1</span>
+                    <span class="detail-pill" id="detail-time-label">10:00 - 11:00</span>
+                    <span class="detail-pill badge-mine" id="detail-owner-badge">Mi Sesión</span>
+                </div>
+
+                <div class="detail-info-block">
+                    <div class="info-item">
+                        <label>Sicólogo Responsable:</label>
+                        <p id="detail-psychologist">Dr. Carlos García</p>
+                    </div>
+                    <div class="info-item">
+                        <label>Paciente:</label>
+                        <p id="detail-patient">Ana María Gómez</p>
+                    </div>
+                    <div class="info-item full">
+                        <label>Notas Clínicas / Motivo:</label>
+                        <p id="detail-notes">Evaluación inicial de ansiedad social.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer justify-between">
+                <button type="button" class="btn-danger hidden" id="btn-delete-booking">
+                    <i class="fa-solid fa-trash-can"></i> Cancelar Reserva
+                </button>
+                <button type="button" class="btn-secondary" id="btn-close-detail-modal-2">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Script -->
+    <script src="js/app.js"></script>
+</body>
+</html>

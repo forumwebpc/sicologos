@@ -1,0 +1,28 @@
+{
+  "name": "reserva-salas-sicologos",
+  "version": "1.0.0",
+  "description": "Sistema de gestión y reserva de salas para equipo de sicólogos y dirección",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "google-calendar",
+    "reservas",
+    "psicologia",
+    "salas",
+    "express"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "googleapis": "^137.0.0",
+    "jsonwebtoken": "^9.0.2"
+  }
+}
