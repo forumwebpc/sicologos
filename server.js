@@ -20,8 +20,12 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/sesiones', express.static(path.join(__dirname, 'public')));
 
-// Health check para monitoreo
-app.get(['/health', '/sesiones/health'], (req, res) => {
+// Health check para EasyPanel / Traefik / Monitoreo en cualquier ruta
+app.get(['/', '/health', '/sesiones/health', '/api/health'], (req, res, next) => {
+    // Si la petición acepta HTML y es la raíz, servir index.html, de lo contrario JSON
+    if (req.path === '/' && req.accepts('html')) {
+        return next();
+    }
     res.status(200).json({ status: 'OK', service: 'Reserva de Salas Sicólogos', timestamp: new Date() });
 });
 
@@ -29,13 +33,8 @@ app.get(['/health', '/sesiones/health'], (req, res) => {
 app.use('/api', routes);
 app.use('/sesiones/api', routes);
 
-// Fallback SPA para ambas rutas
-app.get(['/', '/sesiones', '/sesiones/*'], (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Fallback genérico
-app.use((req, res) => {
+// Fallback SPA para todas las rutas de navegación
+app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
@@ -50,7 +49,6 @@ app.use((err, req, res, next) => {
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`====================================================`);
     console.log(` Servidor de Reserva de Salas escuchando en:`);
-    console.log(` http://localhost:${PORT}`);
-    console.log(` Subruta soportada: http://localhost:${PORT}/sesiones`);
+    console.log(` http://0.0.0.0:${PORT}`);
     console.log(`====================================================`);
 });
