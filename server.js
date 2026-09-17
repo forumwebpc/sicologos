@@ -6,7 +6,7 @@ const path = require('path');
 const routes = require('./src/routes');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = parseInt(process.env.PORT || '3000', 10);
 
 // Middlewares
 app.use(cors({
@@ -46,9 +46,20 @@ app.use((err, req, res, next) => {
     });
 });
 
+// Escuchar en el puerto principal
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`====================================================`);
-    console.log(` Servidor de Reserva de Salas escuchando en:`);
-    console.log(` http://0.0.0.0:${PORT}`);
+    console.log(` Servidor de Reserva de Salas escuchando en puerto ${PORT}`);
     console.log(`====================================================`);
 });
+
+// Escuchar adicionalmente en el puerto 80 para compatibilidad total con Traefik / EasyPanel
+if (PORT !== 80) {
+    try {
+        app.listen(80, '0.0.0.0', () => {
+            console.log(` Servidor escuchando también en el puerto 80 para Traefik / EasyPanel.`);
+        });
+    } catch (err) {
+        // Ignorar si el puerto 80 ya estuviese ocupado
+    }
+}
