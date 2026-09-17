@@ -18,32 +18,47 @@ class CalendarService {
 
             if (process.env.GOOGLE_CREDS_JSON) {
                 try {
-                    const parsedCreds = JSON.parse(process.env.GOOGLE_CREDS_JSON);
-                    if (!parsedCreds.client_email || !parsedCreds.private_key) {
-                        throw new Error('Credenciales JSON incompletas o de prueba');
+                    let rawCreds = process.env.GOOGLE_CREDS_JSON.trim();
+                    // Si viene envuelto en comillas simples o dobles exteriores, limpiarlas
+                    if ((rawCreds.startsWith("'") && rawCreds.endsWith("'")) || (rawCreds.startsWith('"') && rawCreds.endsWith('"'))) {
+                        rawCreds = rawCreds.slice(1, -1);
                     }
+
+                    const parsedCreds = JSON.parse(rawCreds);
+
+                    // Formatear correctamente la clave privada reemplazando \\n por saltos de línea reales
+                    if (parsedCreds.private_key) {
+                        parsedCreds.private_key = parsedCreds.private_key.replace(/\\n/g, '\n');
+                    }
+
                     authOptions.credentials = parsedCreds;
                     const auth = new google.auth.GoogleAuth(authOptions);
                     this.calendar = google.calendar({ version: 'v3', auth });
                     this.isMock = false;
-                    console.log('[CalendarService] Inicializado correctamente con GOOGLE_CREDS_JSON.');
+                    console.log('[CalendarService] ✅ Conectado exitosamente con Google Calendar API (Service Account).');
                 } catch (jsonErr) {
-                    console.warn('[CalendarService] GOOGLE_CREDS_JSON no válido. Ejecutando en MODO SIMULACIÓN:', jsonErr.message);
+                    console.error('[CalendarService] ⚠️ Error al procesar GOOGLE_CREDS_JSON:', jsonErr.message);
                     this.isMock = true;
                     this.calendar = null;
                 }
             } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-                authOptions.keyFile = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-                const auth = new google.auth.GoogleAuth(authOptions);
-                this.calendar = google.calendar({ version: 'v3', auth });
-                this.isMock = false;
-                console.log('[CalendarService] Inicializado correctamente con GOOGLE_APPLICATION_CREDENTIALS.');
+                try {
+                    authOptions.keyFile = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+                    const auth = new google.auth.GoogleAuth(authOptions);
+                    this.calendar = google.calendar({ version: 'v3', auth });
+                    this.isMock = false;
+                    console.log('[CalendarService] ✅ Conectado exitosamente con GOOGLE_APPLICATION_CREDENTIALS.');
+                } catch (fileErr) {
+                    console.error('[CalendarService] ⚠️ Error leyendo archivo de credenciales Google:', fileErr.message);
+                    this.isMock = true;
+                    this.calendar = null;
+                }
             } else {
-                console.log('[CalendarService] No se encontraron credenciales válidas en .env. Ejecutando en MODO SIMULACIÓN LOCAL.');
+                console.log('[CalendarService] ℹ️ No se configuraron credenciales de Google en el entorno. Ejecutando en MODO SIMULACIÓN.');
                 this.isMock = true;
             }
         } catch (error) {
-            console.warn('[CalendarService] Error al inicializar Google Calendar. Usando MODO SIMULACIÓN:', error.message);
+            console.error('[CalendarService] ⚠️ Error general al inicializar Google Calendar Auth:', error.message);
             this.isMock = true;
             this.calendar = null;
         }
@@ -163,14 +178,7 @@ class CalendarService {
             return allEvents;
         } catch (error) {
             console.error('[CalendarService] Error al obtener eventos de Google Calendar:', error.message);
-            // Fallback a modo simulación si falla la API de Google
-            const start = new Date(startDateISO);
-            const end = new Date(endDateISO);
-            return this.mockStorage.filter(evt => {
-                const evtStart = new Date(evt.startTime);
-                const evtEnd = new Date(evt.endTime);
-                return (evtStart >= start && evtStart < end) || (evtEnd > start && evtEnd <= end);
-            });
+            throw error;
         }
     }
 
@@ -207,7 +215,7 @@ class CalendarService {
             });
         } catch (error) {
             console.error('[CalendarService] Error comprobando ocupación:', error.message);
-            return false;
+            throw error;
         }
     }
 
@@ -271,19 +279,7 @@ class CalendarService {
             };
         } catch (error) {
             console.error('[CalendarService] Error creando evento en Google Calendar:', error.message);
-            // Fallback mock
-            const newEvt = {
-                id: 'mock-evt-' + Date.now(),
-                roomId,
-                psychologistId,
-                psychologistName,
-                patientName,
-                notes: notes || '',
-                startTime: startTimeISO,
-                endTime: endTimeISO
-            };
-            this.mockStorage.push(newEvt);
-            return newEvt;
+            throw error;
         }
     }
 
@@ -307,11 +303,7 @@ class CalendarService {
             return true;
         } catch (error) {
             console.error('[CalendarService] Error eliminando evento:', error.message);
-            const index = this.mockStorage.findIndex(evt => evt.id === eventId);
-            if (index !== -1) {
-                this.mockStorage.splice(index, 1);
-            }
-            return true;
+            throw error;
         }
     }
 }
