@@ -70,12 +70,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnDeleteBooking = document.getElementById('btn-delete-booking');
     let activeDetailBooking = null;
 
+    const DEFAULT_ROOMS = [
+        { id: 'sala-1', name: 'Sala 1 - Psicoterapia Individual' },
+        { id: 'sala-2', name: 'Sala 2 - Infanto-Juvenil' },
+        { id: 'sala-3', name: 'Sala 3 - Terapia de Pareja y Familia' },
+        { id: 'sala-4', name: 'Sala 4 - Multiusos / Evaluación' }
+    ];
+
     // --- Initialization ---
     async function init() {
         setupDateControls();
         setupEventListeners();
-        await checkAuthStatus();
         await loadRooms();
+        await checkAuthStatus();
     }
 
     // --- 1. Autenticación y Estado de Sesión ---
@@ -291,6 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         let html = '';
+        const activeRooms = (roomsList && roomsList.length > 0) ? roomsList : DEFAULT_ROOMS;
 
         grid.forEach(row => {
             const slot = row.slotInfo;
@@ -299,7 +307,7 @@ document.addEventListener('DOMContentLoaded', () => {
             html += `<tr>`;
             html += `<td class="time-cell"><i class="fa-regular fa-clock"></i> ${slot.timeLabel}</td>`;
 
-            roomsList.forEach(room => {
+            activeRooms.forEach(room => {
                 const roomSlot = roomsData[room.id];
 
                 if (!roomSlot || roomSlot.status === 'FREE') {
