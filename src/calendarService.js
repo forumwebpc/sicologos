@@ -19,14 +19,13 @@ class CalendarService {
             if (process.env.GOOGLE_CREDS_JSON) {
                 try {
                     let rawCreds = process.env.GOOGLE_CREDS_JSON.trim();
-                    // Si viene envuelto en comillas simples o dobles exteriores, limpiarlas
                     if ((rawCreds.startsWith("'") && rawCreds.endsWith("'")) || (rawCreds.startsWith('"') && rawCreds.endsWith('"'))) {
                         rawCreds = rawCreds.slice(1, -1);
                     }
 
                     const parsedCreds = JSON.parse(rawCreds);
 
-                    // Formatear correctamente la clave privada reemplazando \\n por saltos de línea reales
+                    // Formatear la clave privada
                     if (parsedCreds.private_key) {
                         parsedCreds.private_key = parsedCreds.private_key.replace(/\\n/g, '\n');
                     }
@@ -35,9 +34,9 @@ class CalendarService {
                     const auth = new google.auth.GoogleAuth(authOptions);
                     this.calendar = google.calendar({ version: 'v3', auth });
                     this.isMock = false;
-                    console.log('[CalendarService] ✅ Conectado exitosamente con Google Calendar API (Service Account).');
+                    console.log(`[CalendarService] ✅ Conectado exitosamente a Google Calendar API con la Service Account (${parsedCreds.client_email || 'Service Account'}).`);
                 } catch (jsonErr) {
-                    console.error('[CalendarService] ⚠️ Error al procesar GOOGLE_CREDS_JSON:', jsonErr.message);
+                    console.error('[CalendarService] ⚠️ Error leyendo el JSON de credenciales:', jsonErr.message);
                     this.isMock = true;
                     this.calendar = null;
                 }
@@ -54,7 +53,7 @@ class CalendarService {
                     this.calendar = null;
                 }
             } else {
-                console.log('[CalendarService] ℹ️ No se configuraron credenciales de Google en el entorno. Ejecutando en MODO SIMULACIÓN.');
+                console.log('[CalendarService] ℹ️ No se configuró GOOGLE_CREDS_JSON en el entorno. Ejecutando en MODO SIMULACIÓN.');
                 this.isMock = true;
             }
         } catch (error) {
@@ -144,11 +143,12 @@ class CalendarService {
             });
         }
 
-        try {
-            const allEvents = [];
+        const allEvents = [];
 
-            for (const room of ROOMS) {
-                const calId = this.getCalendarIdForRoom(room.id);
+        // Consultamos de forma resiliente cada sala individualmente
+        for (const room of ROOMS) {
+            const calId = this.getCalendarIdForRoom(room.id);
+            try {
                 const response = await this.calendar.events.list({
                     calendarId: calId,
                     timeMin: startDateISO,
@@ -173,13 +173,12 @@ class CalendarService {
                         });
                     }
                 }
+            } catch (roomErr) {
+                console.warn(`[CalendarService] ⚠️ Aviso para ${room.name} (${calId}): ${roomErr.message}. Verifica que el ID del calendario sea válido y esté compartido con la Service Account.`);
             }
-
-            return allEvents;
-        } catch (error) {
-            console.error('[CalendarService] Error al obtener eventos de Google Calendar:', error.message);
-            throw error;
         }
+
+        return allEvents;
     }
 
     async checkRoomOccupied(roomId, startTimeISO, endTimeISO, excludeEventId = null) {
@@ -214,8 +213,8 @@ class CalendarService {
                 return (start < evtEnd && end > evtStart);
             });
         } catch (error) {
-            console.error('[CalendarService] Error comprobando ocupación:', error.message);
-            throw error;
+            console.warn(`[CalendarService] ⚠️ Aviso al comprobar ocupación para ${roomId}: ${error.message}`);
+            return false;
         }
     }
 
@@ -279,7 +278,7 @@ class CalendarService {
             };
         } catch (error) {
             console.error('[CalendarService] Error creando evento en Google Calendar:', error.message);
-            throw error;
+            throw new Error(`No se pudo crear la reserva en Google Calendar (${error.message})`);
         }
     }
 
@@ -302,8 +301,8 @@ class CalendarService {
             });
             return true;
         } catch (error) {
-            console.error('[CalendarService] Error eliminando evento:', error.message);
-            throw error;
+            console.error('[CalendarService] Error eliminando evento en Google Calendar:', error.message);
+            throw new Error(`No se pudo cancelar el evento en Google Calendar (${error.message})`);
         }
     }
 }
