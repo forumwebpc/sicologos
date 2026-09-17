@@ -180,12 +180,10 @@ router.post('/bookings', requireAuth, async (req, res, next) => {
             return res.status(400).json({ error: `La hora debe estar entre las ${WORK_START_HOUR}:00 y las ${WORK_END_HOUR - 1}:00.` });
         }
 
-        // Construir rangos ISO de inicio y fin de 1 hora exactos
-        const startTime = new Date(date);
-        startTime.setHours(intHour, 0, 0, 0);
-
-        const endTime = new Date(date);
-        endTime.setHours(intHour + 1, 0, 0, 0);
+        // Construir rangos ISO de inicio y fin de 1 hora en formato local para evitar sesgos de servidor UTC
+        const pad = n => String(n).padStart(2, '0');
+        const startISO = `${date}T${pad(intHour)}:00:00`;
+        const endISO = `${date}T${pad(intHour + 1)}:00:00`;
 
         // Crear la reserva llamando al servicio
         const booking = await calendarService.createBooking({
@@ -194,8 +192,8 @@ router.post('/bookings', requireAuth, async (req, res, next) => {
             psychologistName: user.name,
             patientName: patientName.trim(),
             notes: notes ? notes.trim() : '',
-            startTimeISO: startTime.toISOString(),
-            endTimeISO: endTime.toISOString()
+            startTimeISO: startISO,
+            endTimeISO: endISO
         });
 
         res.status(201).json({

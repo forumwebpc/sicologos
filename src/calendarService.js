@@ -244,11 +244,18 @@ class CalendarService {
 
         try {
             const calId = this.getCalendarIdForRoom(roomId);
+            const timeZone = process.env.TIMEZONE || 'Europe/Madrid';
             const eventResource = {
                 summary: `Sesión: ${patientName} (${psychologistName})`,
                 description: `Paciente: ${patientName}\nSicólogo: ${psychologistName}\nNotas: ${notes || 'Sin notas'}`,
-                start: { dateTime: startTimeISO },
-                end: { dateTime: endTimeISO },
+                start: { 
+                    dateTime: startTimeISO,
+                    timeZone: timeZone
+                },
+                end: { 
+                    dateTime: endTimeISO,
+                    timeZone: timeZone
+                },
                 extendedProperties: {
                     private: {
                         roomId,
